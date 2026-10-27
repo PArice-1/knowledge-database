@@ -1,0 +1,21 @@
+[project]
+name = "rag-mcp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "LR", email = "globallr86@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "chonkie>=1.6.4,<2",
+    "markdown-it-py>=4.2.0",
+    "mcp>=2,<3",
+]
+
+[project.scripts]
+rag-mcp = "rag_mcp:main"
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12.0"]
+build-backend = "uv_build"
