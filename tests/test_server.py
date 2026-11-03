@@ -136,7 +136,7 @@ class ServerTests(unittest.IsolatedAsyncioTestCase):
         create.assert_called_once_with(str(DEFAULT_DB_PATH), DEFAULT_COLLECTION)
         create.return_value.run.assert_called_once_with(transport="stdio")
         self.assertEqual(stdout.getvalue(), "")
-        self.assertIn("构建进度", stderr.getvalue())
+        self.assertEqual(stderr.getvalue(), "")
 
     @patch("rag_mcp.mcp.server.build_kb")
     @patch("rag_mcp.mcp.server.create_server")
@@ -229,7 +229,7 @@ class ServerTests(unittest.IsolatedAsyncioTestCase):
                 args=["-m", "rag_mcp.mcp.server", "--build-on-start",
                       "--source", str(source), "--db-path", str(db_path)],
             )
-            # stdio_client 需要真实文件描述符，捕获子进程构建日志到临时文件。
+            # stdio_client 需要真实文件描述符，确认子进程没有输出构建进度。
             with (root / "stderr.log").open("w+", encoding="utf-8") as error_log:
                 async with asyncio.timeout(30), Client(
                     stdio_client(params, errlog=error_log), mode="legacy",
@@ -240,7 +240,7 @@ class ServerTests(unittest.IsolatedAsyncioTestCase):
                     self.assertFalse(stats.is_error)
                     self.assertFalse(json.loads(stats.content[0].text)["exists"])
                 error_log.seek(0)
-                self.assertIn("发现 0 个 MD/TXT 文件", error_log.read())
+                self.assertEqual(error_log.read(), "")
             self.assertFalse(db_path.exists())
 
     @patch("rag_mcp.mcp.server.main")
