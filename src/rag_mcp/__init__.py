@@ -1,2 +1,7 @@
+"""本地持久化 RAG 知识库与 MCP 工具。"""
+
+
 def main() -> None:
-    print("Hello from rag-mcp!")
+    from .rag.server import main as serve
+
+    serve()

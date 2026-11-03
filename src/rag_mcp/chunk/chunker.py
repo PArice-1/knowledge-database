@@ -20,9 +20,9 @@ class Chunker:
             raise ValueError("chunk_size 必须大于 0")
         self.chunk_size = chunk_size
 
-    def chunk(
+    def chunk[PathType: str | Path](
         self,
-        file_path: str | Path | list[str | Path],
+        file_path: str | Path | list[PathType],
         suffix: str | None = None,
     ) -> list[Chunk]:
         """传入单个文件或文件列表，返回按文件顺序合并的 list[Chunk]。

@@ -1,84 +1,78 @@
-import copy
 import json
 import unittest
-from unittest.mock import patch
-from urllib.error import URLError
+from unittest.mock import create_autospec
 
-from rag_mcp.tools import tool_query
+from mcp.server import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
+
+from rag_mcp.rag import KnowledgeBase
+from rag_mcp.tools import register_tools
 
 
-class ToolQueryTests(unittest.TestCase):
-    @patch("rag_mcp.tools.query")
-    @patch("rag_mcp.tools.embeding_files")
-    def test_returns_json_without_embedding_and_preserves_other_fields(self, build, search):
-        knowledges = {"demo": {"content": "原文"}}
-        results = [
-            {
-                "source": "/资料/demo.md",
-                "heading_path": ["安装指南", "Linux"],
-                "content": '运行 "python"。\n保留换行和反斜杠：\\',
-                "start_line": 1,
-                "end_line": 3,
-                "embedding": [0.1, -0.2],
-                "score": 0.85,
-            }
-        ]
-        original = copy.deepcopy(results)
-        build.return_value = knowledges
-        search.return_value = results
+class ToolTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.kb = create_autospec(KnowledgeBase, instance=True)
+        self.server = MCPServer("tools-test")
+        register_tools(self.server, self.kb)
 
-        output = tool_query("如何安装？")
+    async def invoke(self, name, arguments):
+        result = await self.server.call_tool(name, arguments)
+        self.assertEqual(len(result.content), 1)
+        self.assertEqual(result.content[0].type, "text")
+        return json.loads(result.content[0].text)
 
-        self.assertIsInstance(output, str)
-        decoded = json.loads(output)
-        self.assertEqual(
-            decoded,
-            [{key: value for key, value in results[0].items() if key != "embedding"}],
+    async def test_semantic_search_forwards_all_parameters_and_preserves_unicode(self):
+        self.kb.search.return_value = [{"text": "中文正文", "score": 0.9}]
+        result = await self.invoke("search_knowledge", {
+            "text": "如何安装？", "limit": 10, "source": "/资料/a.md", "min_score": 0.5,
+        })
+        self.kb.search.assert_called_once_with("如何安装？", limit=10, source="/资料/a.md", min_score=0.5)
+        self.assertEqual(result, [{"text": "中文正文", "score": 0.9}])
+
+    async def test_semantic_search_defaults_and_empty_results(self):
+        self.kb.search.return_value = []
+        self.assertEqual(await self.invoke("search_knowledge", {"text": "问题"}), [])
+        self.kb.search.assert_called_once_with("问题", limit=5, source=None, min_score=None)
+
+    async def test_keyword_search_forwards_pagination_and_source(self):
+        self.kb.keyword_search.return_value = {"items": [], "has_more": False}
+        await self.invoke("search_keyword", {"text": "ERROR42", "limit": 2, "offset": 3, "source": "/a.txt"})
+        self.kb.keyword_search.assert_called_once_with("ERROR42", limit=2, offset=3, source="/a.txt")
+
+    async def test_list_documents_forwards_pagination(self):
+        self.kb.list_documents.return_value = {"items": [], "total": 0}
+        await self.invoke("list_documents", {"limit": 3, "offset": 5})
+        self.kb.list_documents.assert_called_once_with(limit=3, offset=5)
+
+    async def test_get_document_forwards_source_version_and_ingestion(self):
+        self.kb.get_document.return_value = {"items": [{"text": "正文"}]}
+        result = await self.invoke("get_document", {
+            "source": "/a.md", "processing_key": "key", "ingestion_id": "run", "limit": 2, "offset": 1,
+        })
+        self.kb.get_document.assert_called_once_with(
+            "/a.md", processing_key="key", ingestion_id="run", limit=2, offset=1,
         )
-        self.assertNotIn("embedding", decoded[0])
-        self.assertIn("安装指南", output)
-        self.assertEqual(results, original)
-        build.assert_called_once_with()
-        search.assert_called_once_with("如何安装？", knowledges)
+        self.assertEqual(result["items"][0]["text"], "正文")
 
-    @patch("rag_mcp.tools.query")
-    @patch("rag_mcp.tools.embeding_files", return_value={})
-    def test_filters_each_result_without_changing_order_or_input(self, build, search):
-        results = [
-            {"content": "第一条", "score": 0.9, "embedding": [0.1]},
-            {"content": "第二条", "score": 0.8, "embedding": [0.2]},
-        ]
-        original = copy.deepcopy(results)
-        search.return_value = results
-        self.assertEqual(
-            json.loads(tool_query("问题")),
-            [{"content": "第一条", "score": 0.9}, {"content": "第二条", "score": 0.8}],
-        )
-        self.assertEqual(results, original)
+    async def test_get_chunk_returns_null_when_missing(self):
+        self.kb.get_chunk.return_value = None
+        self.assertIsNone(await self.invoke("get_chunk", {"chunk_id": "id"}))
+        self.kb.get_chunk.assert_called_once_with("id")
 
-    @patch("rag_mcp.tools.query", return_value=[])
-    @patch("rag_mcp.tools.embeding_files", return_value={})
-    def test_empty_results_return_json_array(self, build, search):
-        self.assertEqual(tool_query("问题"), "[]")
+    async def test_stats_forwards_without_arguments(self):
+        self.kb.stats.return_value = {"exists": False, "chunk_count": 0}
+        self.assertEqual(await self.invoke("get_knowledge_base_stats", {}), self.kb.stats.return_value)
+        self.kb.stats.assert_called_once_with()
 
-    @patch("rag_mcp.tools.query")
-    @patch("rag_mcp.tools.embeding_files", side_effect=URLError("模型不可用"))
-    def test_build_error_propagates(self, build, search):
-        with self.assertRaises(URLError):
-            tool_query("问题")
-        search.assert_not_called()
+    async def test_invalid_numbers_are_not_serialized_as_json_nan(self):
+        self.kb.search.return_value = [{"score": float("nan")}]
+        with self.assertRaisesRegex(ToolError, "not JSON compliant"):
+            await self.server.call_tool("search_knowledge", {"text": "问题"})
 
-    @patch("rag_mcp.tools.query", side_effect=ValueError("查询失败"))
-    @patch("rag_mcp.tools.embeding_files", return_value={})
-    def test_query_error_propagates(self, build, search):
-        with self.assertRaisesRegex(ValueError, "查询失败"):
-            tool_query("问题")
-
-    @patch("rag_mcp.tools.query", return_value=[{"score": float("nan")}])
-    @patch("rag_mcp.tools.embeding_files", return_value={})
-    def test_non_finite_score_is_not_serialized_as_invalid_json(self, build, search):
-        with self.assertRaises(ValueError):
-            tool_query("问题")
+    async def test_errors_are_left_to_mcp_instead_of_wrapped_as_success_payload(self):
+        self.kb.search.side_effect = ValueError("模型配置不匹配")
+        with self.assertRaisesRegex(ToolError, "模型配置不匹配"):
+            await self.server.call_tool("search_knowledge", {"text": "问题"})
 
 
 if __name__ == "__main__":

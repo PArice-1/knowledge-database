@@ -10,3 +10,7 @@ wheels/
 .venv
 /knowledge-base/
 /draft/
+
+# Local vector databases
+/.qdrant/
+/src/rag_mcp/vector_databbase/storage/

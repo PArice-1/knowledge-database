@@ -4,7 +4,8 @@ import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
-from rag_mcp.embeding import MODEL, OLLAMA_URL, TIMEOUT_SECONDS, embeding
+from rag_mcp.embed.ollama import MODEL, OLLAMA_URL, TIMEOUT_SECONDS
+from rag_mcp.embed.ollama import embed_text as embeding
 
 
 class EmbedingTests(unittest.TestCase):
@@ -36,17 +37,15 @@ class EmbedingTests(unittest.TestCase):
     @patch("rag_mcp.embed.ollama.urlopen")
     def test_rejects_non_string_input_before_request(self, urlopen):
         for text in (None, 42, ["正文"]):
-            with self.subTest(text=text):
-                with self.assertRaises(TypeError):
-                    embeding(text)
+            with self.subTest(text=text), self.assertRaises(TypeError):
+                embeding(text)
         urlopen.assert_not_called()
 
     @patch("rag_mcp.embed.ollama.urlopen")
     def test_rejects_blank_input_before_request(self, urlopen):
         for text in ("", " \n\t"):
-            with self.subTest(text=text):
-                with self.assertRaises(ValueError):
-                    embeding(text)
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                embeding(text)
         urlopen.assert_not_called()
 
     @patch("rag_mcp.embed.ollama.urlopen")
