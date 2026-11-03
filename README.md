@@ -21,6 +21,17 @@ uv run rag-build-kb ./knowledge-base ./other-docs --db-path ./.qdrant --collecti
 uv run rag-mcp --db-path ./.qdrant --collection knowledge
 ```
 
+也可以合并为一次启动：
+
+```bash
+# 默认扫描 ./knowledge-base，写入 ./knowledge-base/storage，然后启动 MCP。
+uv run rag-mcp --build-on-start
+
+# 自定义多个源目录或文件，以及数据库位置。
+uv run rag-mcp --build-on-start --source ./knowledge-base ./other-docs \
+  --db-path ./.qdrant --collection knowledge
+```
+
 `./other-docs` 是示例路径，需替换为实际存在的目录。语义搜索只生成问题向量，不会重新切分或向量化全部资料；其他工具不依赖 Ollama。构建与工具调用不要同时操作同一个本地数据库。
 
 ### 项目结构
@@ -304,6 +315,24 @@ uv run python -m rag_mcp.mcp.server --db-path ./.qdrant --collection knowledge
 
 使用 stdio 传输，stdout 仅用于 MCP 协议。默认存储目录和集合与 `build_kb` 一致；自定义时需在构建端和服务端传入相同参数。服务工厂 `create_server(db_path, collection_name)` 只注册工具，导入模块不会扫描文件、打开数据库或请求模型。
 
+#### 启动时增量构建
+
+添加 `--build-on-start`，在 `main()` 中先调用 `build_kb()`，成功并释放数据库锁后才启动 stdio 服务：
+
+```bash
+uv run rag-mcp --build-on-start \
+  --source ./knowledge-base ./other-docs ./notes/selected.md \
+  --db-path ./.qdrant --collection knowledge --chunk-size 2048
+```
+
+- 不传 `--build-on-start` 时保持只读启动，不检查源文件；`--source` 必须与该开关一起使用。
+- 开启构建但不传 `--source` 时，默认读取当前工作目录下的 `./knowledge-base`，该目录必须存在。`--source` 支持一个或多个目录/MD/TXT 文件；相对路径按进程工作目录解析。
+- `--chunk-size` 默认 2048，仅用于启动构建；数据库路径和集合与后续工具调用一致。
+- 复用已有文件去重：完整入库且内容、处理配置未变化的文件跳过切分和向量化，新增或修改文件才处理。修改文件追加新版本，不会清理旧版本或已删除文件的记录。
+- 构建日志重定向到 stderr，不污染 MCP stdout；路径无效、模型请求失败或数据库错误会使进程退出，不继续提供可能过期的检索服务。
+- 构建只在进程启动时执行一次，不监听文件变化，也不在每次搜索前重建。首次导入较多资料可能延迟 MCP 握手，需相应调大客户端启动超时，或先用 `rag-build-kb` 完成首次构建。
+- 不要让其他服务或构建进程同时操作同一个本地数据库；工具仍全部只读，构建路径由启动配置指定而不是由 AI 工具参数指定。
+
 MCP 客户端配置示例（把绝对路径替换为实际路径）：
 
 ```json
@@ -314,6 +343,8 @@ MCP 客户端配置示例（把绝对路径替换为实际路径）：
       "args": [
         "--directory", "/absolute/path/to/rag-mcp",
         "run", "rag-mcp",
+        "--build-on-start",
+        "--source", "/absolute/path/to/rag-mcp/knowledge-base",
         "--db-path", "/absolute/path/to/rag-mcp/.qdrant",
         "--collection", "knowledge"
       ]
