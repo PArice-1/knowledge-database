@@ -1,7 +1,7 @@
 """基于已构建的 Qdrant 知识库提供只读 MCP 工具。"""
 
 import argparse
-import sys
+import os
 from contextlib import redirect_stdout
 from pathlib import Path
 
@@ -40,8 +40,8 @@ def main() -> None:
     if args.source is not None and not args.build_on_start:
         parser.error("--source 需要同时指定 --build-on-start")
     if args.build_on_start:
-        # 构建日志不能污染 MCP 的 stdout；构建完成并释放数据库锁后才接收工具调用。
-        with redirect_stdout(sys.stderr):
+        # 丢弃构建进度输出；异常仍向外抛出，构建完成后才启动 MCP。
+        with open(os.devnull, "w") as sink, redirect_stdout(sink):
             build_kb(
                 args.source or ["./knowledge-base"],
                 db_path=args.db_path,
