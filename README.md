@@ -33,14 +33,15 @@ src/rag_mcp/
 ├── fliter/              # 切分前文件去重
 ├── embed/               # Ollama 向量化
 ├── vector_databbase/    # Qdrant 持久化封装
-├── rag/
-│   ├── knowledge_base.py # 持久化检索、文档读取和统计
-│   └── server.py         # MCP 服务工厂及 stdio 入口
-└── tools/
-    ├── search.py         # 语义搜索、关键词搜索
-    ├── documents.py      # 文档列表、文档和片段读取
-    ├── knowledge.py      # 知识库统计
-    └── _shared.py        # JSON 输出和只读工具声明
+└── mcp/
+    ├── __init__.py       # 公开 KnowledgeBase
+    ├── knowledge_base.py # 持久化检索、文档读取和统计
+    ├── server.py         # MCP 服务工厂及 stdio 入口
+    └── tools/
+        ├── search.py     # 语义搜索、关键词搜索
+        ├── documents.py  # 文档列表、文档和片段读取
+        ├── knowledge.py  # 知识库统计
+        └── _shared.py    # JSON 输出和只读工具声明
 ```
 
 ## 文件切分
@@ -282,7 +283,7 @@ uv run python -m unittest discover -s tests -p test_fliter.py -v
 ### 直接使用 Python
 
 ```python
-from rag_mcp.rag import KnowledgeBase
+from rag_mcp.mcp import KnowledgeBase
 
 kb = KnowledgeBase(db_path="./.qdrant", collection_name="knowledge")
 print(kb.stats())
@@ -298,7 +299,7 @@ print(kb.list_documents(limit=50))
 ```bash
 uv run rag-mcp --db-path ./.qdrant --collection knowledge
 # 等价模块入口：
-uv run python -m rag_mcp.rag.server --db-path ./.qdrant --collection knowledge
+uv run python -m rag_mcp.mcp.server --db-path ./.qdrant --collection knowledge
 ```
 
 使用 stdio 传输，stdout 仅用于 MCP 协议。默认存储目录和集合与 `build_kb` 一致；自定义时需在构建端和服务端传入相同参数。服务工厂 `create_server(db_path, collection_name)` 只注册工具，导入模块不会扫描文件、打开数据库或请求模型。
@@ -344,7 +345,7 @@ MCP 客户端配置示例（把绝对路径替换为实际路径）：
 
 ### 清理与迁移
 
-旧的根目录 `server.py`、`tools.py` 已替换为 `rag/server.py` 和 `tools/`。旧 `query.py`、`embeding_files.py` 内存构建/检索链路及 `embeding.py` 兼容入口已删除；对应测试由持久化检索、MCP 和 Ollama 测试替代。旧模块导入路径不再保留兼容层，搜索结果正文统一使用 `text` 字段而非旧 `content`。原始资料和已有数据库不删除。
+MCP 相关实现统一位于 `mcp/`：服务入口是 `mcp/server.py`，工具位于 `mcp/tools/`，持久化读取逻辑位于 `mcp/knowledge_base.py`。原 `rag/` 和顶层 `tools/` 已迁移，Python 导入改为 `rag_mcp.mcp` 和 `rag_mcp.mcp.tools`，模块启动命令改为 `python -m rag_mcp.mcp.server`；CLI 命令 `rag-mcp` 保持不变。旧 `query.py`、`embeding_files.py` 内存构建/检索链路及 `embeding.py` 兼容入口已删除；对应测试由持久化检索、MCP 和 Ollama 测试替代。旧模块导入路径不再保留兼容层，搜索结果正文统一使用 `text` 字段而非旧 `content`。原始资料和已有数据库不删除。
 
 测试使用临时真实 Qdrant 数据库，mock 模型请求，并包含真正的 stdio 子进程握手、工具注册及错误返回测试：
 

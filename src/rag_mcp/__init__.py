@@ -2,6 +2,6 @@
 
 
 def main() -> None:
-    from .rag.server import main as serve
+    from .mcp.server import main as serve
 
     serve()

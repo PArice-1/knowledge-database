@@ -6,7 +6,7 @@ from pathlib import Path
 from mcp.server import MCPServer
 
 from ..config import DEFAULT_COLLECTION, DEFAULT_DB_PATH
-from ..tools import register_tools
+from .tools import register_tools
 from .knowledge_base import KnowledgeBase
 
 

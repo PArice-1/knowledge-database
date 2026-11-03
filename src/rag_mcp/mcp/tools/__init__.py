@@ -2,7 +2,7 @@
 
 from mcp.server import MCPServer
 
-from ..rag.knowledge_base import KnowledgeBase
+from ..knowledge_base import KnowledgeBase
 from .documents import register_document_tools
 from .knowledge import register_knowledge_tools
 from .search import register_search_tools

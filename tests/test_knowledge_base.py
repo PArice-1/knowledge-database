@@ -5,7 +5,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from rag_mcp.embed import Embed, EmbedMetadata, ollama
-from rag_mcp.rag import KnowledgeBase
+from rag_mcp.mcp import KnowledgeBase
 from rag_mcp.vector_databbase import VectorDatabase
 
 

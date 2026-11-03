@@ -12,7 +12,7 @@ from mcp import Client, StdioServerParameters, stdio_client
 
 from rag_mcp import main as package_main
 from rag_mcp.build_kb import build_kb
-from rag_mcp.rag.server import create_server, main
+from rag_mcp.mcp.server import create_server, main
 
 
 class ServerTests(unittest.IsolatedAsyncioTestCase):
@@ -38,7 +38,7 @@ class ServerTests(unittest.IsolatedAsyncioTestCase):
             with (
                 patch("rag_mcp.chunk.Chunker.chunk", side_effect=AssertionError("不能切分")),
                 patch("rag_mcp.embed.ollama.embed_text", side_effect=AssertionError("不能请求模型")),
-                patch("rag_mcp.rag.knowledge_base.VectorDatabase", side_effect=AssertionError("不能打开数据库")),
+                patch("rag_mcp.mcp.knowledge_base.VectorDatabase", side_effect=AssertionError("不能打开数据库")),
             ):
                 server = create_server(path)
                 self.assertEqual(len(await server.list_tools()), 6)
@@ -92,7 +92,7 @@ class ServerTests(unittest.IsolatedAsyncioTestCase):
             db_path = Path(directory) / "missing"
             params = StdioServerParameters(
                 command=sys.executable,
-                args=["-m", "rag_mcp.rag.server", "--db-path", str(db_path)],
+                args=["-m", "rag_mcp.mcp.server", "--db-path", str(db_path)],
             )
             async with asyncio.timeout(30), Client(stdio_client(params), mode="legacy") as client:
                 tools = await client.list_tools()
@@ -105,14 +105,14 @@ class ServerTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIn("limit", invalid.content[0].text)
                 self.assertFalse(db_path.exists())
 
-    @patch("rag_mcp.rag.server.create_server")
+    @patch("rag_mcp.mcp.server.create_server")
     def test_server_cli_passes_storage_and_collection_and_uses_stdio(self, create):
         with patch("sys.argv", ["rag-mcp", "--db-path", "./db", "--collection", "docs"]):
             main()
         create.assert_called_once_with("./db", "docs")
         create.return_value.run.assert_called_once_with(transport="stdio")
 
-    @patch("rag_mcp.rag.server.main")
+    @patch("rag_mcp.mcp.server.main")
     def test_package_entrypoint_starts_server(self, serve):
         package_main()
         serve.assert_called_once_with()

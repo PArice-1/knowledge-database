@@ -2,7 +2,7 @@
 
 from mcp.server import MCPServer
 
-from ..rag.knowledge_base import KnowledgeBase
+from ..knowledge_base import KnowledgeBase
 from ._shared import READ_ONLY, as_json
 
 

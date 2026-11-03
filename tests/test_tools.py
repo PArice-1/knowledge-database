@@ -5,8 +5,8 @@ from unittest.mock import create_autospec
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from rag_mcp.rag import KnowledgeBase
-from rag_mcp.tools import register_tools
+from rag_mcp.mcp import KnowledgeBase
+from rag_mcp.mcp.tools import register_tools
 
 
 class ToolTests(unittest.IsolatedAsyncioTestCase):
