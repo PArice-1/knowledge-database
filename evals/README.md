@@ -75,6 +75,25 @@ example = dataset.first_example()
 
 整数 ID 统一转换为字符串；正文不清洗、不切分、不去重，以免意外改变数据集含义。原始正文可能包含 HTML 标签。
 
+## 一键运行
+
+Ollama 启动且模型可用后，在项目根目录执行：
+
+```bash
+./scripts/eval.sh --max-documents 100 --max-queries 10 --chunk-size 1024 --k 5 --fetch-k 50
+```
+
+脚本先运行 `build_index`，成功后再运行 `run`；默认生成新的集合名和按时间命名的 JSON/Markdown 报告。`--chunk-size` 是字符数，`--max-documents` 是原始资料数，`--fetch-k` 是检索片段预算，`--k` 是去重后的文档排名截断。每次会构建新集合，不自动复用或覆盖旧集合。
+
+可选参数：
+
+```bash
+./scripts/eval.sh --collection my_new_experiment --max-documents 100 --max-queries 10 --output evals/results/my_new_experiment.json
+./scripts/eval.sh --help
+```
+
+还支持 `--data-dir`、`--db-path` 和 `--batch-size`，带空格的路径请加引号。指定的集合名不能已经存在，指定的 JSON 或同名 Markdown 也不能已经存在。若只查询已保存的集合，不要运行一键脚本，直接使用下面的 `evals.run` 命令，并指定 `--collection kb_eval_1`。
+
 ## 构建评估向量库
 
 Parquet 读取和长文切分放在 `src/rag_mcp/chunk/parquet.py`，评估仅调用其 `iter_parquet_chunks()`，再复用 `Embeder` 和 `VectorDatabase`。正文采用与 TXT 相同的递归切分和定位逻辑，不转 TXT、不经过按文件内容去重的 `Fliter`。

@@ -39,7 +39,7 @@ uv run --group eval python -m evals.preview
 
 可以先用 `--max-documents 100 --collection t2retrieval_smoke` 联调。这个选项只是 corpus 前缀截取，不保证任何问题的相关资料覆盖，因此不能作为完整基准的候选库。具体命令与失败处理见[评估目录说明](../evals/README.md#构建评估向量库)。
 
-`evals.run` 对已完成集合执行查询，生成 JSON 和 Markdown 报告。自动测试使用 mock 向量和临时 Qdrant，真实成绩以本地模型运行的报告为准。
+`evals.run` 对已完成集合执行查询，生成 JSON 和 Markdown 报告。也可用 `./scripts/eval.sh --chunk-size 1024 --max-documents 100 --max-queries 10 --k 5 --fetch-k 50` 一键完成新集合构建及评估；该脚本每次先入库，已有集合只查询时直接调用 `evals.run`。自动测试使用 mock 向量和临时 Qdrant，真实成绩以本地模型运行的报告为准。
 
 ## 已保存的展示结果
 

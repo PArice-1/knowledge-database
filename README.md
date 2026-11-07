@@ -103,8 +103,19 @@ uv run rag-mcp --build-on-start --source /path/to/docs /path/to/notes.md \
 
 ```bash
 uv sync --frozen --group eval
+```
 
-# 使用已保存的完整集合，只执行检索评分，不重复生成资料向量。
+一键执行新实验：先将 corpus 前 100 篇切分入库，再评估最多 10 道符合条件的问题，生成 JSON 和 Markdown 报告：
+
+```bash
+./scripts/eval.sh --max-documents 100 --chunk-size 1024 --max-queries 10 --k 5 --fetch-k 50
+```
+
+默认自动生成新集合名，不复用、覆盖或删除旧集合；入库失败就停止，不进入评估。可用 `./scripts/eval.sh --help` 查看路径、批大小和输出参数。**每次运行都会生成新的资料向量**，不是只查询已有数据库。
+
+如果只想使用已保存的 `kb_eval_1` 集合评分，不重复入库：
+
+```bash
 uv run --group eval python -m evals.run --collection kb_eval_1 --max-queries 10 --k 5 --fetch-k 50
 ```
 
