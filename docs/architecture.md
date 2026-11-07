@@ -37,6 +37,17 @@ Agent / MCP 客户端
 
 语义搜索只为当前问题生成一次向量，再查询已存文档向量；其他工具不请求模型。关键词搜索在读取的标题和正文中做子串匹配，并非向量搜索或独立全文索引。详见[MCP 与检索](mcp.md)。
 
+## 独立评估流程
+
+```text
+T2Retrieval corpus → 通用 Parquet 流式读取与 TXT 规则切分
+                  → Embeder → 独立 Qdrant 集合
+queries + qrels   → 完整资料覆盖筛选 → KnowledgeBase 搜索
+                  → 原始文档 ID 去重 → 指标均值 → JSON/Markdown 报告
+```
+
+`evals/build_index.py` 与 `evals/run.py` 分别负责评估入库和批量检索，不把数据集标注规则放入 `src`。查询不按标准答案 ID 过滤，资料向量不会在每次查询时重新构建。仓库保留 `evals/results/` 的真实报告和 `evals/data/storage/` 的本地数据库展示快照，原始 Parquet 不提交。详见[检索评估](evaluation.md)。
+
 ## 模块职责
 
 | 模块 | 职责 |

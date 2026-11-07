@@ -14,3 +14,6 @@ wheels/
 # Local vector databases
 /.qdrant/
 /src/rag_mcp/vector_databbase/storage/
+
+# Raw evaluation dataset downloads; keep reports and database snapshots tracked
+/evals/data/*.parquet
