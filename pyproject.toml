@@ -14,6 +14,11 @@ dependencies = [
     "qdrant-client>=1.20.0",
 ]
 
+[dependency-groups]
+eval = [
+    "pyarrow>=18",
+]
+
 [project.scripts]
 rag-mcp = "rag_mcp:main"
 rag-build-kb = "rag_mcp.build_kb:main"

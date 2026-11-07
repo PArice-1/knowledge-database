@@ -7,7 +7,8 @@ from dataclasses import dataclass
 class ChunkMetadata:
     """来源与定位信息。
 
-    source 是文件绝对路径。行号和字符偏移均从 0 开始、结束位置不包含；
+    source 在文件知识库中是文件绝对路径，在评估中可保存原始资料 ID。
+    行号和字符偏移均从 0 开始、结束位置不包含；
     行范围覆盖片段涉及的所有行，精确原文使用 [start_index:end_index] 定位。
     heading_path 按父标题到子标题排列，无标题时为 []。
     """

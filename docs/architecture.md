@@ -43,13 +43,15 @@ Agent / MCP 客户端
 |---|---|
 | `build_kb.py` | 串联构建流程、处理输入路径、验证持久化 |
 | `config.py` | 构建和服务共用的默认存储路径与集合 |
-| `chunk/` | 文件发现、MD/TXT 解析和固定规则切分 |
+| `chunk/` | MD/TXT 文件发现与切分、通用 Parquet 分批读取与长文切分 |
 | `fliter/` | 计算处理标识，过滤已完整入库或本批重复文件 |
 | `embed/` | 组织片段向量化输入，调用并校验 Ollama 响应 |
 | `vector_databbase/` | 本地 Qdrant 生命周期、集合管理和向量写入 |
 | `mcp/knowledge_base.py` | 查询过滤、语义/关键词搜索、文档读取和统计 |
 | `mcp/server.py` | 服务创建、启动参数、可选启动构建和 stdio 运行 |
 | `mcp/tools/` | 将知识库方法注册为六个只读 MCP 工具 |
+
+Parquet 入口 `iter_parquet_chunks()` 支持配置 ID/正文列名，复用 TXT 的递归规则和原文定位逻辑。`pyarrow` 按需导入，安装 `eval` 依赖组即可使用，不增加 MD/TXT 和 MCP 的必需依赖。常规 `build_kb()` 与文件发现仍只处理 MD/TXT，避免把 Parquet 的“一文件多资料”语义混入按文件增量去重流程。详见[文件切分](chunking.md)。
 
 当前目录名 `fliter`、`vector_databbase` 与代码导入保持一致。
 
@@ -61,7 +63,7 @@ Agent / MCP 客户端
 src/rag_mcp/
 ├── build_kb.py          # 多目录/文件构建入口和 CLI
 ├── config.py            # 构建与服务共用的默认存储配置
-├── chunk/               # MD/TXT 切分
+├── chunk/               # MD/TXT 与 Parquet 正文切分
 ├── fliter/              # 切分前文件去重
 ├── embed/               # Ollama 向量化
 ├── vector_databbase/    # Qdrant 持久化封装

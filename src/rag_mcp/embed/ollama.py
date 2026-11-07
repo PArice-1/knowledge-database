@@ -2,6 +2,7 @@
 
 import json
 import math
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 
@@ -14,7 +15,9 @@ def embed_text(text: str) -> list[float]:
     """返回一段非空文本的向量，供片段向量化和查询向量化共用。
 
     输入类型错误时抛出 TypeError，空白文本或向量格式错误时抛出 ValueError。
-    网络、HTTP 和 JSON 解析错误直接向调用方抛出。
+    显式使用 8192 token 上下文，不自动截断正文。
+    HTTPError 会补充最多 4096 字节的响应正文，保留原异常类型和状态码；
+    其他网络和 JSON 解析错误直接向调用方抛出。
     """
     if not isinstance(text, str):
         raise TypeError("text 必须是字符串")
@@ -25,6 +28,9 @@ def embed_text(text: str) -> list[float]:
         "model": MODEL,
         "input": text,
         "truncate": False,
+        "options": {
+            "num_ctx": 8192,
+        },
     }
     request = Request(
         url=OLLAMA_URL,
@@ -33,8 +39,19 @@ def embed_text(text: str) -> list[float]:
         method="POST",
     )
 
-    with urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-        result = json.load(response)
+    try:
+        with urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+            result = json.load(response)
+    except HTTPError as exc:
+        try:
+            with exc:
+                detail = exc.read(4096).decode("utf-8", errors="replace").strip()
+        except OSError:
+            # 读取错误正文失败时，不覆盖原来的 HTTP 状态和异常。
+            detail = ""
+        if detail:
+            exc.msg = f"{exc.msg}；Ollama 响应：{detail}"
+        raise
 
     embeddings = result.get("embeddings") if isinstance(result, dict) else None
     if not isinstance(embeddings, list) or len(embeddings) != 1:

@@ -3,11 +3,12 @@
 from pathlib import Path
 
 from .markdown import markdown_parser
+from .parquet import parquet_parser
 from .rules import DEFAULT_CHUNK_SIZE
 from .schema import Chunk
 from .text import text_parser
 
-_PARSERS = {".md": markdown_parser, ".txt": text_parser}
+_PARSERS = {".md": markdown_parser, ".txt": text_parser, ".parquet": parquet_parser}
 
 
 class Chunker:
@@ -27,8 +28,8 @@ class Chunker:
     ) -> list[Chunk]:
         """传入单个文件或文件列表，返回按文件顺序合并的 list[Chunk]。
 
-        空列表返回 []。省略后缀时逐文件推断，可混合 MD/TXT；显式后缀
-        应用于所有文件。后缀不区分大小写，接受 md/.md 和 txt/.txt。
+        空列表返回 []。省略后缀时逐文件推断，可混合 MD/TXT/Parquet；显式后缀
+        应用于所有文件。后缀不区分大小写，接受 md/.md、txt/.txt、parquet/.parquet。
         不支持的类型抛出 ValueError；路径、读取和解码错误直接抛出。
         """
         files = file_path if isinstance(file_path, list) else [file_path]
@@ -42,5 +43,5 @@ class Chunker:
         suffix = "." + suffix.lower().lstrip(".")
         parser = _PARSERS.get(suffix)
         if parser is None:
-            raise ValueError(f"不支持的文件后缀：{suffix}，目前支持 .md 和 .txt")
+            raise ValueError(f"不支持的文件后缀：{suffix}，目前支持 .md、.txt 和 .parquet")
         return parser(file, chunk_size=self.chunk_size)

@@ -48,4 +48,8 @@ src/rag_mcp/embed/
 └── ollama.py   # 字符串向量化请求与响应校验
 ```
 
-Ollama 默认使用 `http://localhost:11434/api/embed` 和 `qwen3-embedding:0.6b`，配置位于 `embed/ollama.py`。字符串向量化统一使用 `rag_mcp.embed.ollama.embed_text(text)`，查询与 `Embeder` 共用同一份请求实现。旧的 `embeding.py` 兼容入口已删除。
+Ollama 默认使用 `http://localhost:11434/api/embed` 和 `qwen3-embedding:0.6b`，配置位于 `embed/ollama.py`。请求显式指定 `options.num_ctx=8192`，并保留 `truncate=False`：上下文按 token 而非字符计算，超限直接报错，不自动截断。增大上下文会增加内存或显存开销；8192 不保证容纳所有 corpus 正文。
+
+HTTP 请求失败时，在原 `HTTPError` 消息中补充最多 4096 字节的 Ollama 响应正文，便于区分输入超限、模型不存在等原因。保留原异常实例、状态码与类型，不额外打印日志；读取错误正文失败时仍抛出原 HTTP 异常。
+
+字符串向量化统一使用 `rag_mcp.embed.ollama.embed_text(text)`，查询与 `Embeder` 共用同一份上下文和请求实现。旧的 `embeding.py` 兼容入口已删除。
